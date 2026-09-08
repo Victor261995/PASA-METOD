@@ -247,3 +247,5 @@ class AuditService
             JSON_UNESCAPED_SLASHES
         );
     }
+}
+

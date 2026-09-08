@@ -147,3 +147,36 @@ y configurar host, usuario y contraseña. El servicio `FtpService.php` ya está 
       database/
       docs/
 
+## Ejecución alternativa sin XAMPP (PHP CLI + MariaDB/MySQL CLI)
+
+### 1. Importar Base de Datos por Consola
+
+Crear la base de datos e importar el esquema y los datos iniciales usando la CLI de MySQL/MariaDB:
+
+```bash
+mysql -u root -e "CREATE DATABASE IF NOT EXISTS pasa;"
+mysql -u root pasa < database/pasa.sql
+mysql -u root pasa < database/seed.sql
+```
+
+*(Si tu usuario requiere contraseña, agrega `-p` después de `-u root`)*.
+
+### 2. Levantar el Backend con el servidor embebido de PHP
+
+Desde la raíz del proyecto, ejecuta:
+
+```bash
+php -S 127.0.0.1:8000 -t backend/public backend/public/index.php
+```
+
+La API quedará escuchando en: `http://127.0.0.1:8000`
+
+### 3. Configurar Frontend
+
+Para vincular el frontend con el servidor embebido de PHP, crea un archivo `.env` en la carpeta `frontend/`:
+
+```env
+VITE_API_URL=http://127.0.0.1:8000
+```
+
+
