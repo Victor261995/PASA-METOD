@@ -419,6 +419,21 @@ try {
     ]);
 }
 
+    if ($method === 'GET' && preg_match('#^/api/animales/(\d+)/evidencias$#', $path, $m)) {
+        currentUser($auth);
+        $animalId = (int)$m[1];
+        animalById($db, $animalId);
+        $stmt = $db->prepare("
+            SELECT e.*, u.nombre AS uploaded_by_nombre, u.apellido AS uploaded_by_apellido 
+            FROM evidencias e 
+            LEFT JOIN usuarios u ON u.id = e.uploaded_by 
+            WHERE e.animal_id = ? 
+            ORDER BY e.created_at DESC
+        ");
+        $stmt->execute([$animalId]);
+        Http::json(['evidencias' => $stmt->fetchAll()]);
+    }
+    
     if($method==='POST' && preg_match('#^/api/animales/(\d+)/evidencias$#',$path,$m)){
         $u=currentUser($auth);
         requireRole($u,['OPERADOR','ADMIN']);
