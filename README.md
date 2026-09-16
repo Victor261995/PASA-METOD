@@ -4,154 +4,64 @@ MVP full-stack basado en la arquitectura suministrada para PASA.
 
 ## Stack
 
-- Frontend: React + Vite + styled-components + React Router + Axios
-- Backend: PHP 8+ + Apache + PDO
-- Base de datos: MySQL
-- Archivos: almacenamiento local para desarrollo y soporte FTP configurable
-- Autenticación: token opaco persistido en MySQL
-- Auditoría: eventos encadenados con SHA-256 para detectar modificaciones
+- **Frontend:** React + Vite + styled-components + React Router + Axios
+- **Backend:** PHP 8.2+ (Laravel 11 API)
+- **Base de Datos:** MySQL / MariaDB
+- **Autenticación:** Token persistido en MySQL (compatible con contraseñas hash)
+- **Auditoría:** Cadena de eventos verificable con SHA-256
 
-## Flujo del animal
+---
 
+## Flujo del Animal
+
+```
 INGRESADO → EVALUACION → PROTOCOLO_SANITARIO → VALIDACION → APTO_PARA_ADOPCION
+```
 
-También se contemplan CUARENTENA, RECHAZADO y ADOPTADO.
+*(Estados adicionales: `CUARENTENA`, `RECHAZADO`, `ADOPTADO`)*
+
+---
 
 ## Roles
 
-- OPERADOR: registra animales, realiza evaluación y carga evidencias
-- VALIDADOR: aprueba o rechaza solicitudes
-- AUDITOR: consulta trazabilidad
-- ADMIN: acceso completo
-- ADOPTANTE: acceso público al catálogo y solicitudes de adopción
+- **OPERADOR:** Registra animales, realiza evaluación clínica inicial y sube evidencias sanitarias.
+- **VALIDADOR:** Revisa y aprueba o rechaza solicitudes de paso a disponibilidad para adopción.
+- **AUDITOR:** Consulta la trazabilidad inmutable y verifica cadenas SHA-256.
+- **ADMIN:** Acceso completo a operaciones internas.
+- **ADOPTANTE:** Usuario público que consulta el catálogo de animales aptos y envía solicitudes.
 
-## Credenciales demo
+---
 
-Todos usan la contraseña:
+## Credenciales Demo
 
-    pasa123
+Contraseña universal para todos los usuarios de prueba:
+`pasa123`
 
-Usuarios:
+Usuarios precreados:
+- `operador@pasa.local`
+- `validador@pasa.local`
+- `auditor@pasa.local`
+- `admin@pasa.local`
 
-- operador@pasa.local
-- validador@pasa.local
-- auditor@pasa.local
-- admin@pasa.local
+---
 
-## 1. Base de datos
+## Estructura del Repositorio
 
-Crear la base ejecutando:
+```
+PASA/
+  ├── backend/               # API Backend en Laravel 11 (Oficial)
+  ├── frontend/              # Aplicación Single Page App en React (Vite)
+  ├── database/              # Esquema pasa.sql y seed.sql
+  ├── docs/                  # Documentación de arquitectura y mockups
+  └── legacy/                # Archivo histórico (Backend PHP nativo sin framework)
+```
 
-    database/pasa.sql
-    database/seed.sql
+---
 
-Con phpMyAdmin se pueden importar ambos archivos en ese orden.
+## Guía de Instalación y Ejecución
 
-## 2. Backend en XAMPP
-
-Copiar la carpeta `backend` dentro de:
-
-    C:\xampp\htdocs\pasa\backend
-
-Editar:
-
-    backend/config/config.php
-
-Si tu MySQL usa otras credenciales o puerto, modificarlos allí.
-
-Iniciar Apache y MySQL en XAMPP.
-
-La API quedará en:
-
-    http://localhost/pasa/backend/public
-
-El archivo `.htaccess` necesita `mod_rewrite`. En XAMPP normalmente ya está disponible.
-
-## 3. Frontend
-
-Desde `frontend`:
-
-    npm install
-    npm run dev
-
-El frontend usa por defecto:
-
-    http://localhost/pasa/backend/public
-
-Puede cambiarse creando `.env`:
-
-    VITE_API_URL=http://localhost/pasa/backend/public
-
-## 4. Archivos / FTP
-
-Para que el MVP sea ejecutable sin instalar un servidor FTP adicional, por defecto usa almacenamiento local:
-
-    backend/storage/uploads
-
-En `backend/config/config.php` se puede cambiar:
-
-    'storage_driver' => 'ftp'
-
-y configurar host, usuario y contraseña. El servicio `FtpService.php` ya está incluido.
-
-## 5. Seguridad
-
-- Las contraseñas se verifican con `password_verify`.
-- Los tokens se generan con `random_bytes`.
-- Las rutas privadas exigen autenticación y roles.
-- El catálogo público solo devuelve animales `APTO_PARA_ADOPCION`.
-- La auditoría SHA-256 permite detectar alteraciones en la cadena de eventos, pero no convierte por sí sola la base en un sistema físicamente inmutable.
-
-## 6. Endpoints principales
-
-### Auth
-- POST `/api/login`
-- POST `/api/logout`
-- GET `/api/me`
-
-### Animales
-- GET `/api/animales`
-- GET `/api/animales/{id}`
-- POST `/api/animales`
-- PUT `/api/animales/{id}`
-
-### Evaluaciones
-- GET `/api/animales/{id}/evaluaciones`
-- POST `/api/animales/{id}/evaluaciones`
-
-### Protocolo / evidencias
-- GET `/api/animales/{id}/protocolo`
-- POST `/api/animales/{id}/evidencias`
-- POST `/api/animales/{id}/solicitar-validacion`
-
-### Validaciones
-- GET `/api/validaciones`
-- POST `/api/validaciones/{id}/aprobar`
-- POST `/api/validaciones/{id}/rechazar`
-
-### Auditoría
-- GET `/api/auditoria`
-- GET `/api/animales/{id}/auditoria`
-- GET `/api/auditoria/verificar/{animalId}`
-
-### Público
-- GET `/api/public/animales`
-- GET `/api/public/animales/{id}`
-- POST `/api/public/animales/{id}/solicitudes`
-
-## Estructura
-
-    PASA/
-      frontend/
-      backend/
-      database/
-      docs/
-
-## Ejecución alternativa sin XAMPP (PHP CLI + MariaDB/MySQL CLI)
-
-### 1. Importar Base de Datos por Consola
-
-Crear la base de datos e importar el esquema y los datos iniciales usando la CLI de MySQL/MariaDB:
+### 1. Base de Datos
+Crear e importar la base de datos MySQL/MariaDB:
 
 ```bash
 mysql -u root -e "CREATE DATABASE IF NOT EXISTS pasa;"
@@ -159,24 +69,63 @@ mysql -u root pasa < database/pasa.sql
 mysql -u root pasa < database/seed.sql
 ```
 
-*(Si tu usuario requiere contraseña, agrega `-p` después de `-u root`)*.
+### 2. Backend (Laravel 11)
 
-### 2. Levantar el Backend con el servidor embebido de PHP
-
-Desde la raíz del proyecto, ejecuta:
+Desde la carpeta `backend`:
 
 ```bash
-php -S 127.0.0.1:8000 -t backend/public backend/public/index.php
+cd backend
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan storage:link
+php artisan serve
 ```
 
-La API quedará escuchando en: `http://127.0.0.1:8000`
+La API quedará escuchando en `http://127.0.0.1:8000`.
 
-### 3. Configurar Frontend
+### 3. Frontend (React + Vite)
 
-Para vincular el frontend con el servidor embebido de PHP, crea un archivo `.env` en la carpeta `frontend/`:
+Desde la carpeta `frontend`:
 
-```env
-VITE_API_URL=http://127.0.0.1:8000
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
+El frontend escuchará por defecto en `http://localhost:5173` y apuntará a `http://127.0.0.1:8000`.
 
+---
+
+## Endpoints Principales
+
+### Auth
+- `POST /api/login`
+- `POST /api/logout`
+- `GET /api/me`
+
+### Animales
+- `GET /api/animales`
+- `GET /api/animales/{id}`
+- `POST /api/animales`
+- `PUT /api/animales/{id}`
+
+### Evaluaciones & Evidencias
+- `GET /api/animales/{id}/evaluaciones`
+- `POST /api/animales/{id}/evaluaciones`
+- `GET /api/animales/{id}/protocolo`
+- `POST /api/animales/{id}/evidencias`
+- `POST /api/animales/{id}/solicitar-validacion`
+
+### Validaciones & Auditoría
+- `GET /api/validaciones`
+- `POST /api/validaciones/{id}/aprobar`
+- `POST /api/validaciones/{id}/rechazar`
+- `GET /api/auditoria`
+- `GET /api/auditoria/verificar/{animalId}`
+
+### Catálogo Público
+- `GET /api/public/animales`
+- `GET /api/public/animales/{id}`
+- `POST /api/public/animales/{id}/solicitudes`
