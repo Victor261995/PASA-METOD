@@ -11,7 +11,7 @@ sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=root/' .env 2>/dev/null || true
 
 if [ ! -d "vendor" ] || [ ! -f "vendor/autoload.php" ]; then
     echo "Instalando dependencias de Composer por primera vez..."
-    composer install --no-interaction --no-scripts --prefer-dist
+    composer install --no-interaction --no-scripts --prefer-dist --no-audit
 fi
 
 if ! grep -q "APP_KEY=base64" .env; then
