@@ -20,7 +20,17 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
+# Copiar definicion de paquetes
+COPY composer.json ./
+
+# Instalar dependencias en build time ignorando bloqueos de seguridad
+RUN composer install --no-interaction --no-scripts --prefer-dist --no-security-blocking
+
+# Copiar el resto del código del backend
 COPY . .
+
+# Optimizar autoloader
+RUN composer dump-autoload --no-scripts --optimize
 
 RUN chmod +x entrypoint.sh
 
