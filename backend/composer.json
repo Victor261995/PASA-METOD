@@ -43,6 +43,11 @@
         "audit": {
             "block": false
         },
+        "policy": {
+            "advisories": {
+                "block": false
+            }
+        },
         "optimize-autoloader": true,
         "preferred-install": "dist",
         "sort-packages": true,
