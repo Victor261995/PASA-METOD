@@ -1,0 +1,10 @@
+.git
+.gitignore
+.env
+vendor
+public/storage
+storage/*.key
+storage/logs/*
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*

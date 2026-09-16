@@ -2,6 +2,8 @@
 .gitignore
 node_modules
 vendor
+public/storage
+backend/public/storage
 backend/storage/*.key
 backend/storage/framework/cache/*
 backend/storage/framework/sessions/*
