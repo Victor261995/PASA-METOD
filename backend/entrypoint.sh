@@ -2,8 +2,8 @@
 set -e
 
 # Asegurar directorios requeridos por Laravel
-mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views storage/logs
-chmod -R 777 bootstrap/cache storage 2>/dev/null || true
+mkdir -p public bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views storage/logs
+chmod -R 777 public bootstrap/cache storage 2>/dev/null || true
 
 if [ ! -f .env ]; then
     cp .env.example .env
