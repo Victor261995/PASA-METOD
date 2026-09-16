@@ -60,19 +60,55 @@ PASA/
 
 ## Guía de Instalación y Ejecución
 
-### 1. Base de Datos
-Crear e importar la base de datos MySQL/MariaDB:
+### 💻 Opción A: Windows (PowerShell) — Recomendada
 
+#### 1. Base de Datos
+Crear e importar la base de datos desde PowerShell:
+
+```powershell
+mysql -u root -e "CREATE DATABASE IF NOT EXISTS pasa;"
+Get-Content database/pasa.sql | mysql -u root pasa
+Get-Content database/seed.sql | mysql -u root pasa
+```
+*(Si tu usuario requiere contraseña, agrega `-p` después de `root`)*.
+
+#### 2. Backend (Laravel 11)
+Desde la carpeta `backend`:
+
+```powershell
+cd backend
+composer install
+Copy-Item .env.example .env
+php artisan key:generate
+php artisan storage:link
+php artisan serve
+```
+
+La API quedará escuchando en `http://127.0.0.1:8000`.
+
+#### 3. Frontend (React + Vite)
+Desde la carpeta `frontend`:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+El frontend escuchará por defecto en `http://localhost:5173`.
+
+---
+
+### 🐧 Opción B: Linux / macOS / Bash
+
+#### 1. Base de Datos
 ```bash
 mysql -u root -e "CREATE DATABASE IF NOT EXISTS pasa;"
 mysql -u root pasa < database/pasa.sql
 mysql -u root pasa < database/seed.sql
 ```
 
-### 2. Backend (Laravel 11)
-
-Desde la carpeta `backend`:
-
+#### 2. Backend (Laravel 11)
 ```bash
 cd backend
 composer install
@@ -82,19 +118,12 @@ php artisan storage:link
 php artisan serve
 ```
 
-La API quedará escuchando en `http://127.0.0.1:8000`.
-
-### 3. Frontend (React + Vite)
-
-Desde la carpeta `frontend`:
-
+#### 3. Frontend (React + Vite)
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-
-El frontend escuchará por defecto en `http://localhost:5173` y apuntará a `http://127.0.0.1:8000`.
 
 ---
 
