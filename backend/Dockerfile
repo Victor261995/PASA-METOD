@@ -32,7 +32,9 @@ COPY . .
 # Optimizar autoloader
 RUN composer dump-autoload --no-scripts --optimize
 
-RUN chmod +x entrypoint.sh
+RUN mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views storage/logs \
+    && chmod -R 777 bootstrap/cache storage \
+    && chmod +x entrypoint.sh
 
 EXPOSE 8000
 
