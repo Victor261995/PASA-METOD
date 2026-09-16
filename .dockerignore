@@ -1,0 +1,10 @@
+.git
+.gitignore
+node_modules
+vendor
+backend/storage/*.key
+backend/storage/framework/cache/*
+backend/storage/framework/sessions/*
+backend/storage/framework/views/*
+frontend/dist
+.env
