@@ -23,6 +23,9 @@ backend/storage/framework/sessions/*
 backend/storage/framework/views/*
 backend/storage/uploads/*
 !backend/storage/uploads/.gitkeep
+backend/storage/app/public/*
+!backend/storage/app/public/.gitkeep
+!backend/storage/app/public/.gitignore
 !backend/storage/framework/cache/.gitkeep
 !backend/storage/framework/cache/data/.gitkeep
 !backend/storage/framework/sessions/.gitkeep
