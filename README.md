@@ -140,6 +140,24 @@ npm run dev
 
 ---
 
+## 🧪 Ejecución de la Suite de Pruebas (Tests)
+
+Las pruebas unitarias y de integración cubren el motor de reglas (`RuleEngine`), el cálculo de protocolos sanitarios (`ProtocolService`) y el flujo completo del animal (`FlujoAnimalApiTest`):
+
+### Con Docker:
+```bash
+docker exec pasa-backend php artisan test
+```
+
+### En entorno local (desde la carpeta `backend`):
+```bash
+php artisan test
+# o directamente con PHPUnit:
+./vendor/bin/phpunit
+```
+
+---
+
 ## Endpoints Principales
 
 ### Auth
