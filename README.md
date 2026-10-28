@@ -4,179 +4,188 @@ MVP full-stack basado en la arquitectura suministrada para PASA.
 
 ## Stack
 
-- Frontend: React + Vite + styled-components + React Router + Axios
-- Backend: PHP 8+ + Apache + PDO
-- Base de datos: MySQL
-- Archivos: almacenamiento local para desarrollo y soporte FTP configurable
-- Autenticación: token opaco persistido en MySQL
-- Auditoría: eventos encadenados con SHA-256 para detectar modificaciones
+- **Frontend:** React + Vite + styled-components + React Router + Axios
+- **Backend:** PHP 8.2+ (Laravel 11 API)
+- **Base de Datos:** MySQL 8.0 / MariaDB
+- **Autenticación:** Token persistido en MySQL (compatible con contraseñas hash)
+- **Auditoría:** Cadena de eventos verificable con SHA-256
+- **Infraestructura:** Docker + Docker Compose (opcional)
 
-## Flujo del animal
+---
 
+## Flujo del Animal
+
+```
 INGRESADO → EVALUACION → PROTOCOLO_SANITARIO → VALIDACION → APTO_PARA_ADOPCION
+```
 
-También se contemplan CUARENTENA, RECHAZADO y ADOPTADO.
+*(Estados adicionales: `CUARENTENA`, `RECHAZADO`, `ADOPTADO`)*
+
+---
 
 ## Roles
 
-- OPERADOR: registra animales, realiza evaluación y carga evidencias
-- VALIDADOR: aprueba o rechaza solicitudes
-- AUDITOR: consulta trazabilidad
-- ADMIN: acceso completo
-- ADOPTANTE: acceso público al catálogo y solicitudes de adopción
+- **OPERADOR:** Registra animales, realiza evaluación clínica inicial y sube evidencias sanitarias.
+- **VALIDADOR:** Revisa y aprueba o rechaza solicitudes de paso a disponibilidad para adopción.
+- **AUDITOR:** Consulta la trazabilidad inmutable y verifica cadenas SHA-256.
+- **ADMIN:** Acceso completo a operaciones internas.
+- **ADOPTANTE:** Usuario público que consulta el catálogo de animales aptos y envía solicitudes.
 
-## Credenciales demo
+---
 
-Todos usan la contraseña:
+## Credenciales Demo
 
-    pasa123
+Contraseña universal para todos los usuarios de prueba:
+`pasa123`
 
-Usuarios:
+Usuarios precreados:
+- `operador@pasa.local`
+- `validador@pasa.local`
+- `auditor@pasa.local`
+- `admin@pasa.local`
 
-- operador@pasa.local
-- validador@pasa.local
-- auditor@pasa.local
-- admin@pasa.local
+---
 
-## 1. Base de datos
+## Estructura del Repositorio
 
-Crear la base ejecutando:
+```
+PASA/
+  ├── backend/               # API Backend en Laravel 11 (Oficial)
+  ├── frontend/              # Aplicación Single Page App en React (Vite)
+  ├── database/              # Esquema pasa.sql y seed.sql
+  ├── docs/                  # Documentación de arquitectura y mockups
+  ├── legacy/                # Archivo histórico (Backend PHP nativo sin framework)
+  └── docker-compose.yml     # Orquestación de contenedores Docker
+```
 
-    database/pasa.sql
-    database/seed.sql
+---
 
-Con phpMyAdmin se pueden importar ambos archivos en ese orden.
+## Guía de Instalación y Ejecución
 
-## 2. Backend en XAMPP
+### 🐳 Opción A: Con Docker (Recomendada para Equipos)
 
-Copiar la carpeta `backend` dentro de:
+Requisito: Tener [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalado y ejecutándose.
 
-    C:\xampp\htdocs\pasa\backend
+```bash
+# Desde la raíz del proyecto, encender todos los servicios:
+docker compose up -d
+```
 
-Editar:
+¡Y listo!
+- **Frontend (React):** `http://localhost:5173`
+- **Backend (Laravel API):** `http://localhost:8000`
+- **Base de datos (MySQL):** `localhost:3306` (usuario `root`, clave `root`)
 
-    backend/config/config.php
+*(Para apagar el entorno: `docker compose down`)*
 
-Si tu MySQL usa otras credenciales o puerto, modificarlos allí.
+---
 
-Iniciar Apache y MySQL en XAMPP.
+### 💻 Opción B: Ejecución Local en Windows (PowerShell)
 
-La API quedará en:
+#### 1. Base de Datos
+```powershell
+mysql -u root -e "CREATE DATABASE IF NOT EXISTS pasa;"
+Get-Content database/pasa.sql | mysql -u root pasa
+Get-Content database/seed.sql | mysql -u root pasa
+```
 
-    http://localhost/pasa/backend/public
+#### 2. Backend (Laravel 11)
+Desde la carpeta `backend`:
+```powershell
+cd backend
+composer install
+Copy-Item .env.example .env
+php artisan key:generate
+php artisan storage:link
+php artisan serve
+```
+La API escuchará en `http://127.0.0.1:8000`.
 
-El archivo `.htaccess` necesita `mod_rewrite`. En XAMPP normalmente ya está disponible.
+#### 3. Frontend (React + Vite)
+Desde la carpeta `frontend`:
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+El frontend escuchará en `http://localhost:5173`.
 
-## 3. Frontend
+---
 
-Desde `frontend`:
+### 🐧 Opción C: Ejecución Local en Linux / macOS (Bash)
 
-    npm install
-    npm run dev
-
-El frontend usa por defecto:
-
-    http://localhost/pasa/backend/public
-
-Puede cambiarse creando `.env`:
-
-    VITE_API_URL=http://localhost/pasa/backend/public
-
-## 4. Archivos / FTP
-
-Para que el MVP sea ejecutable sin instalar un servidor FTP adicional, por defecto usa almacenamiento local:
-
-    backend/storage/uploads
-
-En `backend/config/config.php` se puede cambiar:
-
-    'storage_driver' => 'ftp'
-
-y configurar host, usuario y contraseña. El servicio `FtpService.php` ya está incluido.
-
-## 5. Seguridad
-
-- Las contraseñas se verifican con `password_verify`.
-- Los tokens se generan con `random_bytes`.
-- Las rutas privadas exigen autenticación y roles.
-- El catálogo público solo devuelve animales `APTO_PARA_ADOPCION`.
-- La auditoría SHA-256 permite detectar alteraciones en la cadena de eventos, pero no convierte por sí sola la base en un sistema físicamente inmutable.
-
-## 6. Endpoints principales
-
-### Auth
-- POST `/api/login`
-- POST `/api/logout`
-- GET `/api/me`
-
-### Animales
-- GET `/api/animales`
-- GET `/api/animales/{id}`
-- POST `/api/animales`
-- PUT `/api/animales/{id}`
-
-### Evaluaciones
-- GET `/api/animales/{id}/evaluaciones`
-- POST `/api/animales/{id}/evaluaciones`
-
-### Protocolo / evidencias
-- GET `/api/animales/{id}/protocolo`
-- POST `/api/animales/{id}/evidencias`
-- POST `/api/animales/{id}/solicitar-validacion`
-
-### Validaciones
-- GET `/api/validaciones`
-- POST `/api/validaciones/{id}/aprobar`
-- POST `/api/validaciones/{id}/rechazar`
-
-### Auditoría
-- GET `/api/auditoria`
-- GET `/api/animales/{id}/auditoria`
-- GET `/api/auditoria/verificar/{animalId}`
-
-### Público
-- GET `/api/public/animales`
-- GET `/api/public/animales/{id}`
-- POST `/api/public/animales/{id}/solicitudes`
-
-## Estructura
-
-    PASA/
-      frontend/
-      backend/
-      database/
-      docs/
-
-## Ejecución alternativa sin XAMPP (PHP CLI + MariaDB/MySQL CLI)
-
-### 1. Importar Base de Datos por Consola
-
-Crear la base de datos e importar el esquema y los datos iniciales usando la CLI de MySQL/MariaDB:
-
+#### 1. Base de Datos
 ```bash
 mysql -u root -e "CREATE DATABASE IF NOT EXISTS pasa;"
 mysql -u root pasa < database/pasa.sql
 mysql -u root pasa < database/seed.sql
 ```
 
-*(Si tu usuario requiere contraseña, agrega `-p` después de `-u root`)*.
-
-### 2. Levantar el Backend con el servidor embebido de PHP
-
-Desde la raíz del proyecto, ejecuta:
-
+#### 2. Backend (Laravel 11)
 ```bash
-php -S 127.0.0.1:8000 -t backend/public backend/public/index.php
+cd backend
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan storage:link
+php artisan serve
 ```
 
-La API quedará escuchando en: `http://127.0.0.1:8000`
-
-### 3. Configurar Frontend
-
-Para vincular el frontend con el servidor embebido de PHP, crea un archivo `.env` en la carpeta `frontend/`:
-
-```env
-VITE_API_URL=http://127.0.0.1:8000
+#### 3. Frontend (React + Vite)
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
+---
 
+## 🧪 Ejecución de la Suite de Pruebas (Tests)
+
+Las pruebas unitarias y de integración cubren el motor de reglas (`RuleEngine`), el cálculo de protocolos sanitarios (`ProtocolService`) y el flujo completo del animal (`FlujoAnimalApiTest`):
+
+### Con Docker:
+```bash
+docker exec pasa-backend php artisan test
+```
+
+### En entorno local (desde la carpeta `backend`):
+```bash
+php artisan test
+# o directamente con PHPUnit:
+./vendor/bin/phpunit
+```
+
+---
+
+## Endpoints Principales
+
+### Auth
+- `POST /api/login`
+- `POST /api/logout`
+- `GET /api/me`
+
+### Animales
+- `GET /api/animales`
+- `GET /api/animales/{id}`
+- `POST /api/animales`
+- `PUT /api/animales/{id}`
+
+### Evaluaciones & Evidencias
+- `GET /api/animales/{id}/evaluaciones`
+- `POST /api/animales/{id}/evaluaciones`
+- `GET /api/animales/{id}/protocolo`
+- `POST /api/animales/{id}/evidencias`
+- `POST /api/animales/{id}/solicitar-validacion`
+
+### Validaciones & Auditoría
+- `GET /api/validaciones`
+- `POST /api/validaciones/{id}/aprobar`
+- `POST /api/validaciones/{id}/rechazar`
+- `GET /api/auditoria`
+- `GET /api/auditoria/verificar/{animalId}`
+
+### Catálogo Público
+- `GET /api/public/animales`
+- `GET /api/public/animales/{id}`
+- `POST /api/public/animales/{id}/solicitudes`
