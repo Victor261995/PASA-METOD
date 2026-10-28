@@ -1,0 +1,32 @@
+name: PASA Backend Tests
+
+on:
+  push:
+    branches: ["main", "dev"]
+  pull_request:
+    branches: ["main", "dev"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, pdo_mysql
+
+      - name: Copy .env
+        run: cp backend/.env.example backend/.env || cp backend/.env.local backend/.env
+
+      - name: Install Composer dependencies
+        working-directory: ./backend
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Run PHPUnit Tests
+        working-directory: ./backend
+        run: vendor/bin/phpunit

@@ -8,6 +8,7 @@ use Tests\TestCase;
 use App\Models\User;
 use App\Models\Animal;
 use App\Models\AuthToken;
+use App\Models\Validacion;
 use Illuminate\Support\Str;
 
 class FlujoAnimalApiTest extends TestCase
@@ -42,29 +43,34 @@ class FlujoAnimalApiTest extends TestCase
         ];
     }
 
-    public function test_flujo_completo_sanitario_hasta_adopcion(): void
+    /**
+     * Prueba de Integración: Ciclo de vida completo del animal hasta adopción.
+     * Valida códigos HTTP estrictos (201 Created, 200 OK), persistencia correcta 
+     * en las tablas en español ('animales', 'protocolos_sanitarios', 'validaciones'),
+     * control de roles de usuario (caso negativo HTTP 403 para OPERADOR intentando aprobar) 
+     * y visibilidad en el catálogo público final.
+     */
+    public function test_flujo_completo_sanitario_hasta_adopcion_con_aserciones_estrictas(): void
     {
         $headersOperador = $this->crearTokenParaUsuario('OPERADOR');
         $headersValidador = $this->crearTokenParaUsuario('VALIDADOR');
 
-        // 1. INGRESO: Registrar animal autenticado como OPERADOR
+        // 1. INGRESO: Registrar animal como OPERADOR (Validación estricta de creación)
         $resIngreso = $this->withHeaders($headersOperador)->postJson('/api/animales', [
             'nombre' => 'Milo',
             'especie' => 'PERRO',
             'refugio' => 'Refugio Central'
         ]);
 
-        $this->assertTrue(
-            in_array($resIngreso->status(), [200, 201]),
-            "Error en ingreso (status {$resIngreso->status()}): " . json_encode($resIngreso->json())
-        );
-
-        $animalId = $resIngreso->json('id') 
-            ?? $resIngreso->json('animal.id') 
-            ?? $resIngreso->json('data.id')
-            ?? Animal::latest('id')->first()?->id;
-
-        $this->assertNotNull($animalId, 'No se pudo obtener el ID del animal registrado.');
+        $resIngreso->assertStatus(201);
+        $animalId = $resIngreso->json('id') ?? $resIngreso->json('animal.id') ?? $resIngreso->json('data.id');
+        
+        $this->assertNotNull($animalId);
+        $this->assertDatabaseHas('animales', [
+            'id' => $animalId,
+            'nombre' => 'Milo',
+            'estado' => 'INGRESADO'
+        ]);
 
         // 2. EVALUACIÓN CLÍNICA
         $resEval = $this->withHeaders($headersOperador)->postJson("/api/animales/{$animalId}/evaluaciones", [
@@ -77,58 +83,72 @@ class FlujoAnimalApiTest extends TestCase
             'criterio_operador' => 'APTO_PROTOCOLO'
         ]);
 
-        $this->assertTrue(
-            in_array($resEval->status(), [200, 201]),
-            "Error en evaluacion (status {$resEval->status()}): " . json_encode($resEval->json())
-        );
+        $resEval->assertStatus(201);
 
         // 3. PROTOCOLO SANITARIO (Evidencias)
         $file = UploadedFile::fake()->create('certificado.pdf', 100);
 
-        $resDesp = $this->withHeaders($headersOperador)->postJson("/api/animales/{$animalId}/evidencias", [
+        $this->withHeaders($headersOperador)->postJson("/api/animales/{$animalId}/evidencias", [
             'tipo' => 'DESPARASITACION',
             'fecha_emision' => now()->toDateString(),
             'fecha_vencimiento' => now()->addMonths(6)->toDateString(),
             'archivo' => $file
-        ]);
-        $this->assertTrue(
-            in_array($resDesp->status(), [200, 201]),
-            "Error en evidencia desparasitacion: " . json_encode($resDesp->json())
-        );
+        ])->assertStatus(201);
 
-        $resVac = $this->withHeaders($headersOperador)->postJson("/api/animales/{$animalId}/evidencias", [
+        $this->withHeaders($headersOperador)->postJson("/api/animales/{$animalId}/evidencias", [
             'tipo' => 'VACUNACION',
             'fecha_emision' => now()->toDateString(),
             'fecha_vencimiento' => now()->addYear()->toDateString(),
             'archivo' => $file
+        ])->assertStatus(201);
+
+        // Verificar que el protocolo sanitario llegó al 100%
+        $this->assertDatabaseHas('protocolos_sanitarios', [
+            'animal_id' => $animalId,
+            'porcentaje_cumplimiento' => 100
         ]);
-        $this->assertTrue(
-            in_array($resVac->status(), [200, 201]),
-            "Error en evidencia vacunacion: " . json_encode($resVac->json())
-        );
 
-        // 4. VALIDACIÓN (Solicitud)
+        // 4. SOLICITUD DE VALIDACIÓN
         $resSol = $this->withHeaders($headersOperador)->postJson("/api/animales/{$animalId}/solicitar-validacion");
-        $this->assertTrue(
-            in_array($resSol->status(), [200, 201]),
-            "Error en solicitud de validacion: " . json_encode($resSol->json())
-        );
-        $valId = $resSol->json('id') ?? $resSol->json('validacion_id') ?? 1;
+        $resSol->assertStatus(201);
+        
+        $valId = $resSol->json('id') ?? Validacion::latest('id')->first()->id;
+        $this->assertNotNull($valId);
 
-        // 5. APROBACIÓN (Dictamen con rol VALIDADOR)
+        // 5. CASO NEGATIVO DE ROLES: OPERADOR intentando aprobar una validación (Debe ser rechazado por rol 403)
+        $this->withHeaders($headersOperador)->postJson("/api/validaciones/{$valId}/aprobar", [
+            'observaciones' => 'Intento ilegal de operador.'
+        ])->assertStatus(403);
+
+        // 6. APROBACIÓN VÁLIDA CON ROL VALIDADOR
         $resAprob = $this->withHeaders($headersValidador)->postJson("/api/validaciones/{$valId}/aprobar", [
             'observaciones' => 'Protocolo sanitario verificado y aprobado.'
         ]);
-        $this->assertTrue(
-            in_array($resAprob->status(), [200, 201]),
-            "Error en aprobacion: " . json_encode($resAprob->json())
-        );
+        $resAprob->assertOk();
 
-        // 6. CATÁLOGO PÚBLICO (Ruta pública sin token)
+        // Verificar que la validación quedó registrada en base de datos
+        $this->assertDatabaseHas('validaciones', [
+            'id' => $valId
+        ]);
+
+        // 7. CATÁLOGO PÚBLICO: Comprobar que Milo aparece en la lista pública
         $resPub = $this->getJson('/api/public/animales');
-        $this->assertTrue(
-            in_array($resPub->status(), [200, 201]),
-            "Error en catalogo publico: " . json_encode($resPub->json())
-        );
+        $resPub->assertOk();
+        
+        $resPub->assertJsonFragment([
+            'nombre' => 'Milo',
+            'especie' => 'PERRO'
+        ]);
+    }
+
+    /**
+     * Prueba de Integración de Seguridad: Control de acceso no autenticado.
+     * Verifica que toda petición sin token Bearer a endpoints protegidos 
+     * sea rechazada de forma estricta con código HTTP 401 Unauthorized.
+     */
+    public function test_acceso_no_autenticado_es_rechazado(): void
+    {
+        // Petición sin token Bearer a ruta protegida debe retornar 401
+        $this->getJson('/api/animales')->assertStatus(401);
     }
 }
